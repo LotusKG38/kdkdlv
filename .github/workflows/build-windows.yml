@@ -7,6 +7,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-2022
@@ -43,3 +46,32 @@ jobs:
             release/BUILD-*.log
             release/RELEASE-CANDIDATE-*.txt
           if-no-files-found: warn
+
+      - name: Pack the installer into a zip
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -TotalCount 1).Trim()
+          "ZIP_NAME=KingdomComeTogether-$version.zip" >> $env:GITHUB_ENV
+          "KCT_VERSION=$version" >> $env:GITHUB_ENV
+          Compress-Archive -Path "release\KingdomComeTogether-Setup-$version.exe" -DestinationPath "KingdomComeTogether-$version.zip" -Force
+          Copy-Item "KingdomComeTogether-$version.zip" "KingdomComeTogether.zip"
+
+      # One download link for everyone (once the repository is public):
+      # https://github.com/<owner>/<repo>/releases/latest/download/KingdomComeTogether.zip
+      - name: Publish the zip as a GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.KCT_VERSION }}
+          name: Kingdom Come Together ${{ env.KCT_VERSION }} (unsigned test build)
+          make_latest: true
+          overwrite_files: true
+          files: |
+            ${{ env.ZIP_NAME }}
+            KingdomComeTogether.zip
+          body: |
+            Unofficial co-op mod for Kingdom Come: Deliverance II, built from the source of
+            https://github.com/DeepFriedDepp/KingdomCome-Together (GPLv3). Not affiliated with Warhorse Studios or PLAION.
+
+            Install: download the zip, extract it, run KingdomComeTogether-Setup-${{ env.KCT_VERSION }}.exe.
+            The installer is unsigned: Windows SmartScreen shows "More info" -> "Run anyway".
+            This is the maintainer's release candidate, not tested with two real players yet.
