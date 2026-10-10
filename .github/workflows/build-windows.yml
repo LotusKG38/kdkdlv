@@ -1,0 +1,45 @@
+# Builds the Kingdom Come: Together installer on a GitHub-hosted Windows runner,
+# so a player can download it from the browser without a local toolchain.
+# The result is an UNSIGNED release candidate (tools\Build-Installer.ps1 -ReleaseCandidate).
+name: Build Windows installer
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Make sure Inno Setup 6 is present
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+
+      - name: Build installer (release candidate, unsigned)
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File tools\Build-Installer.ps1 -ReleaseCandidate
+
+      - name: Upload installer
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KingdomComeTogether-Setup
+          path: |
+            release/KingdomComeTogether-Setup-*.exe
+            release/BUILD-*.log
+            release/RELEASE-CANDIDATE-*.txt
+          if-no-files-found: warn
