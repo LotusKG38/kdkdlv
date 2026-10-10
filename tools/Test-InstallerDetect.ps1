@@ -312,6 +312,10 @@ Assert-That "check-exe refuses retail" ((Get-Field checkexe-retail ok) -eq "0") 
 Write-Host ""
 Write-Host "This machine (read only)"
 $realExe = Get-Field real-machine exe
+# A CI runner (GitHub Actions) has no Steam and no game: the fixture cases above still prove detection.
+if ($env:GITHUB_ACTIONS -eq "true") {
+    Write-Host "  SKIP  CI runner: no Steam or Modding Tools to find on this machine"
+} else {
 Assert-That "Steam located from the registry" ((Get-Field real-machine steam) -eq "1") $results["real-machine"]
 Assert-That "Modding Tools found on this machine" ((Get-Field real-machine found) -eq "1") $results["real-machine"]
 Assert-That "detected exe exists" ($realExe -ne "" -and (Test-Path $realExe)) $realExe
@@ -319,6 +323,7 @@ if ($realExe -ne "" -and (Test-Path $realExe)) {
     $dir = Split-Path $realExe -Parent
     Assert-That "detected exe passes the discriminator" `
         ((Test-Path "$dir\Framework.dll") -and (Test-Path "$dir\CrySystem.dll")) $dir
+}
 }
 Write-Host ("  INFO  this machine: workspace={0} place_mod={1}" -f (Get-Field real-machine workspace), (Get-Field real-machine place_mod))
 
